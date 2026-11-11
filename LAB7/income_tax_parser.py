@@ -26,10 +26,14 @@ def parse_amount(text):
     text = text.replace("Rs", "").replace("rs", "")
     text = text.replace(",", "").replace(" ", "").strip()
 
-    if not text.isdigit():
+    # Accept only ASCII digits to prevent Unicode conversion errors.
+    if not text or not all(char in "0123456789" for char in text):
         return None
 
-    return int(text)
+    try:
+        return int(text)
+    except (ValueError, OverflowError):
+        return None
 
 
 def parse_tax_slab(line):
@@ -44,19 +48,24 @@ def parse_tax_slab(line):
         limits, rate = line.split(":")
         low, high = limits.split("-")
 
-        low = int(low.strip())
-        high = int(high.strip())
-        rate = int(rate.strip())
+        low = low.strip()
+        high = high.strip()
+        rate = rate.strip()
 
-        if low < 0 or high < 0 or rate < 0:
+        if not all(value and all(char in "0123456789" for char in value)
+                   for value in (low, high, rate)):
             return None
+
+        low = int(low)
+        high = int(high)
+        rate = int(rate)
 
         if low > high:
             return None
 
         return low, high, rate
 
-    except (ValueError, AttributeError):
+    except (ValueError, AttributeError, OverflowError):
         return None
 
 
@@ -71,7 +80,10 @@ def main():
     print("Amount in rupees:", result)
 
     print("\n==== Running parse_tax_slab ====")
-    value = input("Enter a tax slab as LOW-HIGH:RATE (e.g. 250000-500000:5): ")
+    value = input(
+        "Enter a tax slab as LOW-HIGH:RATE "
+        "(e.g. 250000-500000:5): "
+    )
     result = parse_tax_slab(value)
     print("Tax slab (low, high, rate):", result)
 
